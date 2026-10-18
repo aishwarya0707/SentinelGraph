@@ -1,0 +1,28 @@
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Virtual environment
+.venv/
+venv/
+
+# Tests
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local databases and backups
+sentinelgraph.db
+sentinelgraph_backup.db
+sentinelgraph_test.db
+*.sqlite
+*.sqlite3
+
+# Secrets
+.env
+.env.*
+
+# macOS
+.DS_Store

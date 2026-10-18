@@ -1,0 +1,440 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SentinelGraph | Security Operations</title>
+    <style>
+        #alert-status {
+    margin: 12px;
+    padding: 8px;
+    border-radius: 6px;
+    background: #111a2e;
+    color: #e5e7eb;
+    border: 1px solid #253047;
+}
+
+#status-message {
+    color: #9ca3af;
+    font-size: 13px;
+}
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #0b1120;
+            color: #e5e7eb;
+        }
+
+        header {
+            padding: 22px 32px;
+            border-bottom: 1px solid #253047;
+            background: #111a2e;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+        }
+
+        header h1 { margin: 0; font-size: 23px; }
+        header p { margin: 6px 0 0; color: #9ca3af; font-size: 13px; }
+
+        .live {
+            color: #86efac;
+            font-size: 13px;
+        }
+
+        main { padding: 28px 32px; max-width: 1400px; margin: auto; }
+
+        .section-title { margin: 0 0 16px; font-size: 17px; }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 16px;
+            margin-bottom: 30px;
+        }
+
+        .card, .panel {
+            background: #111a2e;
+            border: 1px solid #253047;
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .card p { color: #9ca3af; font-size: 13px; margin: 0 0 12px; }
+        .card strong { font-size: 30px; }
+        .medium { color: #fbbf24; }
+        .high { color: #fb923c; }
+        .critical { color: #f87171; }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 18px;
+        }
+
+        .panel h2 { margin: 0 0 18px; font-size: 17px; }
+
+        .severity-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #253047;
+            font-size: 14px;
+        }
+
+        .severity-row:last-child { border-bottom: 0; }
+
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th, td {
+            padding: 13px 10px;
+            text-align: left;
+            border-bottom: 1px solid #253047;
+            white-space: nowrap;
+        }
+        th { color: #9ca3af; font-weight: 500; }
+        .status { color: #93c5fd; }
+        button {
+            background: #2563eb;
+            color: white;
+            border: 0;
+            border-radius: 6px;
+            padding: 8px 11px;
+            cursor: pointer;
+        }
+        button:hover { background: #1d4ed8; }
+
+        #message { color: #9ca3af; font-size: 13px; margin-bottom: 16px; }
+        #details { margin-top: 20px; }
+        pre {
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            color: #cbd5e1;
+            font-size: 12px;
+        }
+
+        @media (max-width: 800px) {
+            main { padding: 20px 14px; }
+            header { padding: 18px 14px; }
+            .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .layout { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div>
+            <h1>🛡️ SentinelGraph</h1>
+            <p>Security Event Detection & Investigation</p>
+        </div>
+        <span class="live">● Dashboard</span>
+    </header>
+
+    <main>
+        <p id="message">Loading security data...</p>
+
+<section class="panel" style="margin-bottom: 24px;">
+    <h2>🧪 Detection Lab</h2>
+    <p style="color: #9ca3af; font-size: 13px;">
+        Run controlled simulations against SentinelGraph's detection engine.
+        These scenarios generate synthetic security events.
+    </p>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+        <button class="scenario-button" data-scenario="brute_force">
+            Simulate Brute Force
+        </button>
+
+        <button class="scenario-button" data-scenario="password_spraying">
+            Simulate Password Spraying
+        </button>
+
+        <button class="scenario-button" data-scenario="normal_activity">
+            Simulate Normal Activity
+        </button>
+    </div>
+
+    <p id="scenario-message" role="status"></p>
+    <pre id="scenario-results"></pre>
+</section>
+
+        <h2 class="section-title">Security Overview</h2>
+        <section class="cards">
+            <div class="card">
+                <p>Total Events</p>
+                <strong id="total-events">—</strong>
+            </div>
+            <div class="card">
+                <p>Total Alerts</p>
+                <strong id="total-alerts">—</strong>
+            </div>
+            <div class="card">
+                <p>Open Alerts</p>
+                <strong id="open-alerts">—</strong>
+            </div>
+            <div class="card">
+                <p>Investigating</p>
+                <strong id="investigating-alerts">—</strong>
+            </div>
+        </section>
+
+        <section class="layout">
+            <div class="panel">
+                <h2>Alerts by Severity</h2>
+                <div class="severity-row">
+                    <span class="medium">● Medium</span>
+                    <strong id="medium-alerts">—</strong>
+                </div>
+                <div class="severity-row">
+                    <span class="high">● High</span>
+                    <strong id="high-alerts">—</strong>
+                </div>
+                <div class="severity-row">
+                    <span class="critical">● Critical</span>
+                    <strong id="critical-alerts">—</strong>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>Recent Alerts</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Detection Rule</th>
+                                <th>Severity</th>
+                                <th>Status</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody id="alerts-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+      <section class="panel" id="details" hidden>
+    <h2>Alert Investigation</h2>
+
+    <label for="alert-status">Update status:</label>
+    <select id="alert-status">
+        <option value="open">Open</option>
+        <option value="investigating">Investigating</option>
+        <option value="closed">Closed</option>
+    </select>
+
+    <button id="save-status">Save Status</button>
+    <p id="status-message"></p>
+
+    <pre id="details-content"></pre>
+
+<div id="mitre-details" hidden>
+    <h3>MITRE ATT&CK Mapping</h3>
+    <p><strong>Technique:</strong> <span id="mitre-technique"></span></p>
+    <p><strong>Tactic:</strong> <span id="mitre-tactic"></span></p>
+</div>
+
+</section>
+    </main>
+
+    <script>
+        let currentAlertId = null;
+
+async function runScenario(scenario) {
+    const message = document.getElementById("scenario-message");
+    const results = document.getElementById("scenario-results");
+    const buttons = document.querySelectorAll(".scenario-button");
+
+    buttons.forEach(button => button.disabled = true);
+    message.textContent = "Running simulation...";
+    results.textContent = "";
+
+    try {
+        const response = await fetch("/lab/scenarios", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ scenario })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.detail || "Simulation failed.");
+        }
+
+        message.textContent =
+            `Completed: ${data.events_submitted} synthetic events submitted.`;
+
+        results.textContent = JSON.stringify(data, null, 2);
+
+        await loadDashboard();
+    } catch (error) {
+        message.textContent = `Error: ${error.message}`;
+    } finally {
+        buttons.forEach(button => button.disabled = false);
+    }
+}
+
+document.querySelectorAll(".scenario-button").forEach(button => {
+    button.addEventListener("click", () => {
+        runScenario(button.dataset.scenario);
+    });
+});
+
+        async function loadDashboard() {
+            const message = document.getElementById("message");
+
+            try {
+                const [summaryResponse, alertsResponse] = await Promise.all([
+                    fetch("/dashboard/summary"),
+                    fetch("/alerts")
+                ]);
+
+                if (!summaryResponse.ok || !alertsResponse.ok) {
+                    throw new Error("The API returned an error.");
+                }
+
+                const summary = await summaryResponse.json();
+                const alertData = await alertsResponse.json();
+
+                document.getElementById("total-events").textContent = summary.total_events;
+                document.getElementById("total-alerts").textContent = summary.total_alerts;
+                document.getElementById("open-alerts").textContent = summary.open_alerts;
+                document.getElementById("investigating-alerts").textContent = summary.investigating_alerts;
+
+                document.getElementById("medium-alerts").textContent = summary.alerts_by_severity.medium;
+                document.getElementById("high-alerts").textContent = summary.alerts_by_severity.high;
+                document.getElementById("critical-alerts").textContent = summary.alerts_by_severity.critical;
+
+                const body = document.getElementById("alerts-body");
+                body.replaceChildren();
+
+                for (const alert of alertData.alerts.slice(-10).reverse()) {
+                    const row = document.createElement("tr");
+
+                    const values = [
+                        alert.alert_id,
+                        alert.rule,
+                        alert.severity,
+                        alert.status
+                    ];
+
+                    for (const value of values) {
+                        const cell = document.createElement("td");
+                        cell.textContent = value;
+                        row.appendChild(cell);
+                    }
+
+                    const actionCell = document.createElement("td");
+                    const button = document.createElement("button");
+                    button.textContent = "Investigate";
+                    button.addEventListener("click", () => showAlert(alert.alert_id));
+                    actionCell.appendChild(button);
+                    row.appendChild(actionCell);
+                    body.appendChild(row);
+                }
+
+                message.textContent = "Dashboard data loaded successfully.";
+            } catch (error) {
+                message.textContent = "Could not load dashboard data. Check that the API server is running.";
+                console.error(error);
+            }
+        }
+
+async function showAlert(alertId) {
+    const details = document.getElementById("details");
+    const content = document.getElementById("details-content");
+    const statusSelect = document.getElementById("alert-status");
+    const statusMessage = document.getElementById("status-message");
+
+    try {
+        const response = await fetch(`/alerts/${alertId}`);
+        if (!response.ok) throw new Error("Could not load alert.");
+
+        const alert = await response.json();
+        
+    
+const mitre = alert.mitre_attack || {};
+
+const mitreSection = document.getElementById("mitre-details");
+const mitreTechnique = document.getElementById("mitre-technique");
+const mitreTactic = document.getElementById("mitre-tactic");
+
+if (mitre.technique_id) {
+    mitreSection.hidden = false;
+    mitreTechnique.textContent =
+        `${mitre.technique_id} — ${mitre.technique_name}`;
+    mitreTactic.textContent = mitre.tactic || "Not mapped";
+} else {
+    mitreSection.hidden = true;
+}
+
+        currentAlertId = alert.alert_id;
+        statusSelect.value = alert.status;
+        statusMessage.textContent = "";
+
+        content.textContent = JSON.stringify({
+            alert_id: alert.alert_id,
+            rule: alert.rule,
+            severity: alert.severity,
+            source_ip: alert.source_ip,
+            failed_attempts: alert.failed_attempts,
+            window_minutes: alert.window_minutes,
+            status: alert.status,
+            created_at: alert.created_at,
+            mitre_attack: mitre,
+            related_events: alert.related_events
+        }, null, 2);
+
+        details.hidden = false;
+        details.scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+        });
+    } catch (error) {
+        content.textContent = "Unable to load alert details.";
+        details.hidden = false;
+    }
+}
+
+document.getElementById("save-status").addEventListener("click", async () => {
+    if (currentAlertId === null) return;
+
+    const status = document.getElementById("alert-status").value;
+    const statusMessage = document.getElementById("status-message");
+
+    statusMessage.textContent = "Saving...";
+
+    try {
+        const response = await fetch(
+            `/alerts/${currentAlertId}?status=${encodeURIComponent(status)}`,
+            { method: "PATCH" }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.detail || "Unable to update status.");
+        }
+
+        statusMessage.textContent = "Status updated successfully.";
+        document.getElementById("details-content").textContent =
+            JSON.stringify(result, null, 2);
+
+        await loadDashboard();
+    } catch (error) {
+        statusMessage.textContent = error.message;
+    }
+});
+
+        loadDashboard();
+    </script>
+</body>
+</html>
