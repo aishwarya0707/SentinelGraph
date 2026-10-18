@@ -421,6 +421,26 @@ def test_password_spraying_scenario():
         for alert in data["alerts"]
     )
 
+def test_successful_logins_across_distinct_users_do_not_trigger_alert():
+    usernames = ["alice", "bob", "charlie", "david", "emma"]
+
+    for username in usernames:
+        response = client.post(
+            "/events",
+            json={
+                "event_type": "login",
+                "username": username,
+                "source_ip": "203.0.113.75",
+                "outcome": "success",
+                "timestamp": "2026-01-01T12:00:00+00:00",
+            },
+        )
+        assert response.status_code == 201
+
+    alerts_response = client.get("/alerts")
+    assert alerts_response.status_code == 200
+    assert alerts_response.json()["alerts"] == []
+
 
 def test_normal_activity_scenario():
     response = client.post(
@@ -433,3 +453,67 @@ def test_normal_activity_scenario():
 
     assert data["events_submitted"] == 5
     assert data["alerts"] == []
+
+def test_failed_logins_outside_five_minute_window_do_not_trigger_alert():
+    timestamps = [
+        "2026-01-01T12:00:00+00:00",
+        "2026-01-01T12:01:00+00:00",
+        "2026-01-01T12:02:00+00:00",
+        "2026-01-01T12:03:00+00:00",
+        "2026-01-01T12:06:00+00:00",
+    ]
+
+    for timestamp in timestamps:
+        response = client.post(
+            "/events",
+            json={
+                "event_type": "login",
+                "username": "demo_user",
+                "source_ip": "192.0.2.80",
+                "outcome": "failure",
+                "timestamp": timestamp,
+            },
+        )
+        assert response.status_code == 201
+
+    alerts_response = client.get("/alerts")
+    assert alerts_response.status_code == 200
+    assert alerts_response.json()["alerts"] == []
+
+
+
+def test_repeated_failed_logins_escalate_severity():
+    timestamps = [
+        f"2026-01-01T12:00:{second:02d}+00:00"
+        for second in range(10)
+    ]
+
+    for timestamp in timestamps:
+        response = client.post(
+            "/events",
+            json={
+                "event_type": "login",
+                "username": "demo_user",
+                "source_ip": "192.0.2.90",
+                "outcome": "failure",
+                "timestamp": timestamp,
+            },
+        )
+        assert response.status_code == 201
+
+    alerts_response = client.get(
+        "/alerts",
+        params={"status": "open"},
+    )
+    assert alerts_response.status_code == 200
+
+    alerts = alerts_response.json()["alerts"]
+    brute_force_alerts = [
+        alert for alert in alerts
+        if alert["rule"] == "repeated_failed_logins"
+        and alert["source_ip"] == "192.0.2.90"
+    ]
+
+    assert len(brute_force_alerts) == 1
+    assert brute_force_alerts[0]["failed_attempts"] == 10
+    assert brute_force_alerts[0]["severity"] == "critical"
